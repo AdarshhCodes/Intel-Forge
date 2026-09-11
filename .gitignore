@@ -36,3 +36,13 @@ dist-ssr/
 Thumbs.db
 ehthumbs.db
 [Dd]esktop.ini
+
+# Presentations & Pitch Decks
+*.pptx
+*.ppt
+IntelForge-SIH'26.pptx
+references/*.pptx
+references/*.ppt
+references/**/*.pptx
+references/**/*.ppt
+
