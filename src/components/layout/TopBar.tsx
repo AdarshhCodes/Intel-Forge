@@ -9,14 +9,17 @@ import {
   UserCheck,
   Lock,
   Database,
+  Sun,
+  Moon,
 } from 'lucide-react';
-import { useInvestigationStore } from '../../stores';
+import { useInvestigationStore, useThemeStore } from '../../stores';
 
 export const TopBar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentCase, cases, selectCase, currentInvestigator, runAiQuery } =
     useInvestigationStore();
+  const { theme, toggleTheme } = useThemeStore();
   const [isCaseMenuOpen, setIsCaseMenuOpen] = useState(false);
   const [searchInput, setSearchInput] = useState('');
 
@@ -184,6 +187,21 @@ export const TopBar: React.FC = () => {
               {currentCase.alertCount}
             </span>
           </div>
+
+          {/* Theme Toggle Button (Light / Dark Mode) */}
+          <button
+            onClick={toggleTheme}
+            id="theme-toggle-button"
+            className="p-2 rounded bg-forge-card border border-forge-border hover:bg-forge-cardHover text-forge-text-secondary hover:text-forge-cyan transition flex items-center justify-center group"
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            aria-label={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            {theme === 'dark' ? (
+              <Sun className="w-4 h-4 text-forge-amber group-hover:rotate-45 transition-transform duration-300" />
+            ) : (
+              <Moon className="w-4 h-4 text-forge-cyan group-hover:-rotate-12 transition-transform duration-300" />
+            )}
+          </button>
 
           {/* Officer Profile Badge */}
           <div className="hidden xl:flex items-center space-x-2 pl-2 border-l border-forge-border">

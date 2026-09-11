@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import cytoscape, { Core, EventObject } from 'cytoscape';
-import { useInvestigationStore } from '../../stores';
+import { useInvestigationStore, useThemeStore } from '../../stores';
 import { investigationService, graphService } from '../../services';
 import { Entity, Relationship } from '../../types';
 
@@ -25,6 +25,7 @@ export const CytoscapeCanvas: React.FC<CytoscapeCanvasProps> = ({ onNodeHover })
     expandedNodeIds,
     expandNode,
   } = useInvestigationStore();
+  const { theme } = useThemeStore();
 
   const [allEntities, setAllEntities] = useState<Entity[]>([]);
   const [allRelationships, setAllRelationships] = useState<Relationship[]>([]);
@@ -52,20 +53,20 @@ export const CytoscapeCanvas: React.FC<CytoscapeCanvasProps> = ({ onNodeHover })
           style: {
             'background-color': 'data(color)',
             label: 'data(label)',
-            color: '#f8fafc',
+            color: theme === 'light' ? '#0f172a' : '#f8fafc',
             'font-family': 'Inter, sans-serif',
             'font-size': '10px',
             'font-weight': 600,
             'text-valign': 'bottom',
             'text-margin-y': 6,
-            'text-background-color': '#080c14',
+            'text-background-color': theme === 'light' ? '#ffffff' : '#080c14',
             'text-background-opacity': 0.85,
             'text-background-padding': '3px',
             'text-background-shape': 'roundrectangle',
             width: 'data(size)',
             height: 'data(size)',
             'border-width': 2,
-            'border-color': '#1e293b',
+            'border-color': theme === 'light' ? '#cbd5e1' : '#1e293b',
             'transition-property': 'background-color, border-color, width, height, opacity',
             'transition-duration': 0.25,
           } as any,
@@ -82,7 +83,7 @@ export const CytoscapeCanvas: React.FC<CytoscapeCanvasProps> = ({ onNodeHover })
             width: 48,
             height: 48,
             'font-size': '11px',
-            'text-background-color': '#0f172a',
+            'text-background-color': theme === 'light' ? '#f1f5f9' : '#0f172a',
             'z-index': 999,
           } as any,
         },
@@ -106,9 +107,9 @@ export const CytoscapeCanvas: React.FC<CytoscapeCanvasProps> = ({ onNodeHover })
             label: 'data(label)',
             'font-size': '8px',
             'font-family': 'JetBrains Mono, monospace',
-            color: '#94a3b8',
+            color: theme === 'light' ? '#334155' : '#94a3b8',
             'text-rotation': 'autorotate',
-            'text-background-color': '#080c14',
+            'text-background-color': theme === 'light' ? '#ffffff' : '#080c14',
             'text-background-opacity': 0.9,
             'text-background-padding': '2px',
             'transition-property': 'line-color, width, opacity',
@@ -195,6 +196,30 @@ export const CytoscapeCanvas: React.FC<CytoscapeCanvasProps> = ({ onNodeHover })
       cy.destroy();
     };
   }, []);
+
+  // Dynamically update Cytoscape canvas styling on theme changes
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    const isLight = theme === 'light';
+    cy.style()
+      .selector('node')
+      .style({
+        color: isLight ? '#0f172a' : '#f8fafc',
+        'text-background-color': isLight ? '#ffffff' : '#080c14',
+        'border-color': isLight ? '#cbd5e1' : '#1e293b',
+      })
+      .selector('edge')
+      .style({
+        color: isLight ? '#334155' : '#94a3b8',
+        'text-background-color': isLight ? '#ffffff' : '#080c14',
+      })
+      .selector('node[?highlighted]')
+      .style({
+        'text-background-color': isLight ? '#f1f5f9' : '#0f172a',
+      })
+      .update();
+  }, [theme]);
 
   // Update Cytoscape elements when filters, selections, or dataset changes
   useEffect(() => {
