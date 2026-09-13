@@ -19,6 +19,11 @@ class EvidenceService {
     return this.evidenceList.filter((e) => e.entityIds.includes(entityId));
   }
 
+  public addEvidence(item: Evidence): Evidence {
+    this.evidenceList.unshift(item);
+    return item;
+  }
+
   public searchEvidence(query: string): Evidence[] {
     const q = query.trim().toLowerCase();
     if (!q) return this.getEvidence();

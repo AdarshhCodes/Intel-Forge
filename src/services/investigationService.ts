@@ -41,6 +41,11 @@ class InvestigationService {
     return this.relationships.find((r) => r.id === id);
   }
 
+  public getRelationshipsForEntity(entityId: string, caseId?: string): Relationship[] {
+    const allRels = this.getRelationships(caseId);
+    return allRels.filter((r) => r.sourceId === entityId || r.targetId === entityId);
+  }
+
   /**
    * Search across entities, roles, tags, and identifiers
    */
