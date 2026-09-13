@@ -2,418 +2,286 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
-  Shield,
   AlertTriangle,
   Network,
   FileSearch,
   ShieldAlert,
   ArrowRight,
-  ExternalLink,
-  CheckCircle2,
-  Clock,
+  Inbox,
+  Users,
+  Search,
   Sparkles,
-  UserCheck,
+  ExternalLink,
 } from 'lucide-react';
 import { useInvestigationStore } from '../stores';
-import {
-  investigationService,
-  alertService,
-  evidenceService,
-  auditService,
-} from '../services';
-import { truncateHash } from '../lib/utils';
-import { Entity } from '../types';
+import { investigationService, alertService, evidenceService } from '../services';
 
 export const CommandCentrePage: React.FC = () => {
   const navigate = useNavigate();
-  const {
-    currentCase,
-    selectEntity,
-    selectEvidence,
-    selectAlert,
-    selectRelationship,
-    runAiQuery,
-    verifyRelationshipAction,
-  } = useInvestigationStore();
+  const { currentCase, selectEntity, selectAlert, runAiQuery } = useInvestigationStore();
 
   const entities = investigationService.getEntities(currentCase.id);
-  const relationships = investigationService.getRelationships(currentCase.id);
   const alerts = alertService.getAlerts();
   const evidenceList = evidenceService.getEvidence();
-  const recentAuditBlocks = auditService.getBlocks().slice(-5).reverse();
 
-  const highRiskEntities = entities
-    .filter((e) => e.riskScore >= 75)
-    .sort((a, b) => b.riskScore - a.riskScore);
+  const keySuspects = entities
+    .filter((e) => e.type === 'PERSON')
+    .sort((a, b) => b.riskScore - a.riskScore)
+    .slice(0, 4);
 
-  const unverifiedRelationships = relationships.filter(
-    (r) => r.verificationStatus === 'AI_SUGGESTED'
-  );
+  const pendingReviewCount = evidenceList.filter(
+    (e) => e.verificationStatus !== 'HUMAN_VERIFIED' && e.verificationStatus !== 'REJECTED'
+  ).length;
 
-  const criticalAlerts = alerts.filter(
-    (a) => a.severity === 'CRITICAL' || a.severity === 'HIGH'
-  );
+  const topAlerts = alerts.slice(0, 3);
+
+  const sampleQuestions = [
+    'Show money transfers between Vikram Malhotra and Rohan Verma',
+    'Which burner phone was in contact with Rajesh Kumar before the robbery?',
+    'List all CCTV sightings near the Rohini Toll Plaza',
+  ];
+
+  const handleAskQuestion = (question: string) => {
+    runAiQuery(question);
+    navigate('/ai');
+  };
 
   return (
     <div className="p-6 max-w-7xl mx-auto w-full space-y-6">
-      {/* Top Header & Operational Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-forge-border pb-4">
+      {/* Top Banner */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-forge-panel border border-forge-border p-5 rounded-lg shadow-sm">
         <div>
-          <div className="flex items-center space-x-2 text-forge-cyan font-mono text-xs">
-            <LayoutDashboard className="w-4 h-4" />
-            <span>INVESTIGATION COMMAND HEADQUARTERS</span>
+          <div className="flex items-center space-x-2">
+            <span className="p-2 rounded bg-forge-cyan/15 text-forge-cyan border border-forge-cyan/30">
+              <LayoutDashboard className="w-5 h-5" />
+            </span>
+            <h1 className="text-xl font-bold text-white font-mono tracking-wide">
+              INVESTIGATION COMMAND CENTRE
+            </h1>
+            <span className="text-xs px-2 py-0.5 rounded bg-forge-cyan/20 text-forge-cyan font-mono font-semibold">
+              LIVE CONSOLE
+            </span>
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight mt-1">
-            {currentCase.name}
-          </h1>
-          <p className="text-xs text-forge-text-muted mt-0.5">
-            Special Cell &amp; EOW Joint Taskforce · Lead: {currentCase.leadInvestigator}
+          <p className="text-xs text-forge-text-secondary mt-1 max-w-2xl">
+            {currentCase.name} · SIH26189 AI-Powered Criminal Network Analysis Platform
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center space-x-2.5">
+          <button
+            onClick={() => navigate('/inbox')}
+            className="flex items-center space-x-1.5 px-4 py-2 rounded bg-forge-cyan hover:bg-forge-cyanLight text-black text-xs font-bold transition shadow-sm"
+          >
+            <Inbox className="w-4 h-4" />
+            <span>+ Evidence Inbox</span>
+          </button>
           <button
             onClick={() => navigate('/graph')}
-            className="flex items-center space-x-2 bg-forge-cyan hover:bg-forge-cyan/80 text-slate-900 font-mono text-xs font-bold px-3.5 py-2 rounded transition shadow-cyan-glow"
+            className="flex items-center space-x-1.5 px-3 py-2 rounded bg-forge-card hover:bg-forge-cardHover border border-forge-border text-white text-xs font-semibold transition"
           >
-            <Network className="w-4 h-4" />
-            <span>LAUNCH NETWORK GRAPH</span>
-          </button>
-          <button
-            onClick={() => navigate('/ai')}
-            className="flex items-center space-x-1.5 bg-forge-card hover:bg-forge-cardHover border border-forge-border text-forge-text-secondary hover:text-white font-mono text-xs px-3 py-2 rounded transition"
-          >
-            <Sparkles className="w-4 h-4 text-forge-cyan" />
-            <span>AI COPILOT</span>
+            <Network className="w-4 h-4 text-forge-cyan" />
+            <span>Open Graph</span>
           </button>
         </div>
       </div>
 
-      {/* Non-Dominating Metric Ribbons */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 font-mono">
-        <div className="bg-forge-card/80 border border-forge-border rounded-md p-3">
-          <div className="text-[10px] text-forge-text-muted flex items-center justify-between">
-            <span>ENTITIES</span>
-            <Network className="w-3.5 h-3.5 text-forge-cyan" />
+      {/* 4 Clean Key Metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Metric 1: Suspects */}
+        <div
+          onClick={() => navigate('/graph')}
+          className="p-4 rounded-lg bg-forge-panel border border-forge-border hover:border-forge-cyan/50 cursor-pointer transition shadow-sm group"
+        >
+          <div className="flex items-center justify-between text-xs text-forge-text-muted font-mono mb-1">
+            <span>NETWORK ENTITIES</span>
+            <Users className="w-4 h-4 text-forge-cyan group-hover:scale-110 transition-transform" />
           </div>
-          <div className="text-xl font-bold text-white mt-1">{entities.length}</div>
-          <div className="text-[9px] text-forge-text-muted">Indexed Nodes</div>
+          <div className="text-2xl font-bold text-white font-mono">{entities.length}</div>
+          <div className="text-[11px] text-forge-cyan mt-1 flex items-center space-x-1">
+            <span>Explore in Network Graph</span>
+            <ArrowRight className="w-3 h-3" />
+          </div>
         </div>
 
-        <div className="bg-forge-card/80 border border-forge-border rounded-md p-3">
-          <div className="text-[10px] text-forge-rose flex items-center justify-between">
-            <span>HIGH RISK</span>
-            <Shield className="w-3.5 h-3.5 text-forge-rose" />
+        {/* Metric 2: Evidence Exhibits */}
+        <div
+          onClick={() => navigate('/evidence')}
+          className="p-4 rounded-lg bg-forge-panel border border-forge-border hover:border-forge-cyan/50 cursor-pointer transition shadow-sm group"
+        >
+          <div className="flex items-center justify-between text-xs text-forge-text-muted font-mono mb-1">
+            <span>EVIDENCE EXHIBITS</span>
+            <FileSearch className="w-4 h-4 text-forge-cyan group-hover:scale-110 transition-transform" />
           </div>
-          <div className="text-xl font-bold text-forge-rose mt-1">{highRiskEntities.length}</div>
-          <div className="text-[9px] text-forge-rose/80">Score &ge; 75</div>
+          <div className="text-2xl font-bold text-white font-mono">{evidenceList.length}</div>
+          <div className="text-[11px] text-forge-text-secondary mt-1 flex items-center space-x-1">
+            <span>Browse Vault</span>
+            <ArrowRight className="w-3 h-3" />
+          </div>
         </div>
 
-        <div className="bg-forge-card/80 border border-forge-border rounded-md p-3">
-          <div className="text-[10px] text-forge-amber flex items-center justify-between">
-            <span>AI LEADS</span>
-            <Sparkles className="w-3.5 h-3.5 text-forge-amber" />
+        {/* Metric 3: HITL Review Gate */}
+        <div
+          onClick={() => navigate('/review-gate')}
+          className="p-4 rounded-lg bg-forge-panel border border-forge-border hover:border-forge-amber/50 cursor-pointer transition shadow-sm group"
+        >
+          <div className="flex items-center justify-between text-xs text-forge-text-muted font-mono mb-1">
+            <span>HITL REVIEW QUEUE</span>
+            <ShieldAlert className="w-4 h-4 text-forge-amber group-hover:scale-110 transition-transform" />
           </div>
-          <div className="text-xl font-bold text-forge-amber mt-1">
-            {unverifiedRelationships.length}
+          <div className="text-2xl font-bold text-forge-amber font-mono">{pendingReviewCount} Pending</div>
+          <div className="text-[11px] text-forge-amber mt-1 flex items-center space-x-1">
+            <span>Officer Verification Gate</span>
+            <ArrowRight className="w-3 h-3" />
           </div>
-          <div className="text-[9px] text-forge-amber/80">Quarantine Gate</div>
         </div>
 
-        <div className="bg-forge-card/80 border border-forge-border rounded-md p-3">
-          <div className="text-[10px] text-forge-emerald flex items-center justify-between">
-            <span>EVIDENCE</span>
-            <FileSearch className="w-3.5 h-3.5 text-forge-emerald" />
+        {/* Metric 4: Risk Alerts */}
+        <div
+          onClick={() => navigate('/alerts')}
+          className="p-4 rounded-lg bg-forge-panel border border-forge-border hover:border-forge-rose/50 cursor-pointer transition shadow-sm group"
+        >
+          <div className="flex items-center justify-between text-xs text-forge-text-muted font-mono mb-1">
+            <span>PROACTIVE RISK ALERTS</span>
+            <AlertTriangle className="w-4 h-4 text-forge-rose group-hover:scale-110 transition-transform" />
           </div>
-          <div className="text-xl font-bold text-white mt-1">{evidenceList.length}</div>
-          <div className="text-[9px] text-forge-emerald">Sealed Exhibits</div>
-        </div>
-
-        <div className="bg-forge-card/80 border border-forge-border rounded-md p-3">
-          <div className="text-[10px] text-forge-text-muted flex items-center justify-between">
-            <span>RELATIONSHIPS</span>
-            <UserCheck className="w-3.5 h-3.5 text-forge-cyan" />
+          <div className="text-2xl font-bold text-forge-rose font-mono">{alerts.length} Flagged</div>
+          <div className="text-[11px] text-forge-rose mt-1 flex items-center space-x-1">
+            <span>Review Red Flags</span>
+            <ArrowRight className="w-3 h-3" />
           </div>
-          <div className="text-xl font-bold text-white mt-1">{relationships.length}</div>
-          <div className="text-[9px] text-forge-text-muted">18 Verified Links</div>
-        </div>
-
-        <div className="bg-forge-card/80 border border-forge-border rounded-md p-3">
-          <div className="text-[10px] text-forge-rose flex items-center justify-between">
-            <span>ALERTS</span>
-            <AlertTriangle className="w-3.5 h-3.5 text-forge-rose" />
-          </div>
-          <div className="text-xl font-bold text-white mt-1">{alerts.length}</div>
-          <div className="text-[9px] text-forge-rose font-bold">2 Critical Anomaly</div>
         </div>
       </div>
 
-      {/* Main Command Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column (2 Cols wide): Intelligence Discoveries & Review Queue */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Section 1: Recent Intelligence Discoveries */}
-          <div className="bg-forge-card border border-forge-border rounded-lg p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-forge-border/60 pb-3">
-              <div className="flex items-center space-x-2 text-forge-cyan font-mono text-xs font-bold">
-                <Sparkles className="w-4 h-4" />
-                <span>KEY INTELLIGENCE DISCOVERIES</span>
-              </div>
-              <span className="text-[10px] font-mono text-forge-text-muted">AUTO-GROUNDED BY AGENT SWARM</span>
-            </div>
-
-            <div className="space-y-3">
-              {/* Discovery 1: The 3-hop bridge */}
-              <div className="p-3.5 bg-forge-bg rounded-md border border-forge-border hover:border-forge-cyan/50 transition space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-forge-cyan/15 text-forge-cyan border border-forge-cyan/30">
-                    TELECOM + FINANCIAL FUSION
-                  </span>
-                  <span className="font-mono text-[10px] text-forge-emerald font-bold">94% Confidence</span>
-                </div>
-                <h4 className="text-sm font-bold text-white">
-                  3-Hop Bridge Discovered: Rajesh Kumar &harr; Burner Phone &harr; Amit Sharma
-                </h4>
-                <p className="text-xs text-forge-text-secondary leading-relaxed">
-                  Sequential calls from Vasant Vihar tower to Karol Bagh tower via burner hardware IMEI 861092049182091 occurred 15 minutes before ₹1.85 Cr RTGS Hawala remittance.
-                </p>
-                <div className="flex items-center justify-between pt-2 border-t border-forge-border/40 text-xs font-mono">
-                  <span className="text-forge-text-muted text-[10px]">Citations: IF-EVD-002, IF-EVD-005</span>
-                  <button
-                    onClick={() => {
-                      runAiQuery('Show the strongest connection between Rajesh Kumar and Amit Sharma');
-                      navigate('/graph');
-                    }}
-                    className="text-forge-cyan hover:underline flex items-center space-x-1 font-semibold"
-                  >
-                    <span>Highlight in Network Graph</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Discovery 2: Dubai Hawala Token */}
-              <div className="p-3.5 bg-forge-bg rounded-md border border-forge-border hover:border-forge-cyan/50 transition space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-forge-amber/15 text-forge-amber border border-forge-amber/30">
-                    DOCUMENT + AUDIO WIRE INTERCEPT
-                  </span>
-                  <span className="font-mono text-[10px] text-forge-emerald font-bold">92% Confidence</span>
-                </div>
-                <h4 className="text-sm font-bold text-white">
-                  Cross-Border Hawala Token Match (500,000 AED)
-                </h4>
-                <p className="text-xs text-forge-text-secondary leading-relaxed">
-                  Seized handwritten chit #CH-992 from Surya Bullion matched intercepted phone wiretap #WT-26-088 where Mohd. Tariq confirmed settlement at Deira Gold Souk desk.
-                </p>
-                <div className="flex items-center justify-between pt-2 border-t border-forge-border/40 text-xs font-mono">
-                  <span className="text-forge-text-muted text-[10px]">Citations: IF-EVD-006, IF-EVD-007</span>
-                  <button
-                    onClick={() => {
-                      const ev = evidenceService.getEvidenceById('IF-EVD-006');
-                      if (ev) selectEvidence(ev);
-                    }}
-                    className="text-forge-cyan hover:underline flex items-center space-x-1 font-semibold"
-                  >
-                    <span>Inspect Token Exhibit</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Discovery 3: Warehouse CCTV Sighting */}
-              <div className="p-3.5 bg-forge-bg rounded-md border border-forge-border hover:border-forge-cyan/50 transition space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-forge-rose/15 text-forge-rose border border-forge-rose/30">
-                    YOLOV8 COMPUTER VISION
-                  </span>
-                  <span className="font-mono text-[10px] text-forge-emerald font-bold">96% Confidence</span>
-                </div>
-                <h4 className="text-sm font-bold text-white">
-                  Black Scorpio Fastag Crossing &amp; Okhla Cash Handover
-                </h4>
-                <p className="text-xs text-forge-text-secondary leading-relaxed">
-                  Courier Suresh Raina and logistics controller Vikram Malhotra identified transferring currency duffle bags at Shed #14 gate at 19:42 IST.
-                </p>
-                <div className="flex items-center justify-between pt-2 border-t border-forge-border/40 text-xs font-mono">
-                  <span className="text-forge-text-muted text-[10px]">Citations: IF-EVD-003, IF-EVD-004</span>
-                  <button
-                    onClick={() => navigate('/timeline')}
-                    className="text-forge-cyan hover:underline flex items-center space-x-1 font-semibold"
-                  >
-                    <span>Inspect Chronological Sequence</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            </div>
+      {/* Main 2-Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Col: Key Suspects & Primary Targets */}
+        <div className="bg-forge-panel border border-forge-border rounded-lg p-5 space-y-4 shadow-sm">
+          <div className="flex items-center justify-between border-b border-forge-border pb-3">
+            <h2 className="text-sm font-bold text-white font-mono uppercase tracking-wider flex items-center space-x-2">
+              <Users className="w-4 h-4 text-forge-cyan" />
+              <span>Primary Suspects & Persons of Interest</span>
+            </h2>
+            <button
+              onClick={() => navigate('/graph')}
+              className="text-[11px] font-mono text-forge-cyan hover:underline flex items-center space-x-1"
+            >
+              <span>View All on Graph</span>
+              <ExternalLink className="w-3 h-3" />
+            </button>
           </div>
 
-          {/* Section 2: Evidence Review & Quarantine Queue */}
-          <div className="bg-forge-card border border-forge-border rounded-lg p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-forge-border/60 pb-3">
-              <div className="flex items-center space-x-2 text-forge-amber font-mono text-xs font-bold">
-                <ShieldAlert className="w-4 h-4" />
-                <span>HUMAN-IN-THE-LOOP QUARANTINE QUEUE ({unverifiedRelationships.length})</span>
-              </div>
-              <span className="text-[10px] font-mono text-forge-text-muted">AWAITING INVESTIGATOR APPROVAL</span>
-            </div>
-
-            <div className="space-y-3">
-              {unverifiedRelationships.map((rel) => {
-                const source = investigationService.getEntityDetails(rel.sourceId);
-                const target = investigationService.getEntityDetails(rel.targetId);
-
-                return (
-                  <div
-                    key={rel.id}
-                    className="p-3.5 bg-forge-bg rounded-md border border-forge-amber/30 space-y-2 font-mono text-xs"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-white font-bold">
-                        {source?.name || rel.sourceId} &rarr; {target?.name || rel.targetId}
-                      </span>
-                      <span className="text-forge-amber text-[11px] font-bold">
-                        {rel.confidence}% Confidence
-                      </span>
-                    </div>
-
-                    <div className="text-[11px] text-forge-cyan font-sans">{rel.type.replace(/_/g, ' ')}</div>
-                    {rel.aiReasoning && (
-                      <p className="text-[11px] text-forge-text-secondary font-sans leading-relaxed">
-                        {rel.aiReasoning}
-                      </p>
-                    )}
-
-                    <div className="flex items-center justify-between pt-2 border-t border-forge-border/40">
-                      <button
-                        onClick={() => selectRelationship(rel)}
-                        className="text-[11px] text-forge-text-muted hover:text-white underline"
-                      >
-                        Inspect Supporting Evidence ({rel.evidenceIds.length})
-                      </button>
-                      <button
-                        onClick={() => verifyRelationshipAction(rel.id)}
-                        className="px-3 py-1 bg-forge-emerald/20 hover:bg-forge-emerald/30 border border-forge-emerald/50 text-forge-emerald rounded text-[11px] font-bold flex items-center space-x-1 transition"
-                      >
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>VERIFY &amp; MINT BLOCK</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column (1 Col wide): Threat Radar, High Risk Targets & Activity Log */}
-        <div className="space-y-6">
-          {/* High-Priority Alerts */}
-          <div className="bg-forge-card border border-forge-border rounded-lg p-5 space-y-3">
-            <div className="flex items-center justify-between border-b border-forge-border/60 pb-2.5">
-              <div className="flex items-center space-x-2 text-forge-rose font-mono text-xs font-bold">
-                <AlertTriangle className="w-4 h-4" />
-                <span>HIGH PRIORITY THREATS</span>
-              </div>
-              <button
-                onClick={() => navigate('/alerts')}
-                className="text-[10px] font-mono text-forge-cyan hover:underline"
+          <div className="space-y-3">
+            {keySuspects.map((suspect) => (
+              <div
+                key={suspect.id}
+                onClick={() => {
+                  selectEntity(suspect);
+                  navigate('/graph');
+                }}
+                className="p-3 rounded bg-forge-card hover:bg-forge-cardHover border border-forge-border cursor-pointer transition flex items-center justify-between"
               >
-                VIEW ALL ({alerts.length})
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              {criticalAlerts.slice(0, 4).map((alt) => (
-                <div
-                  key={alt.id}
-                  onClick={() => selectAlert(alt)}
-                  className="p-2.5 bg-forge-bg rounded border border-forge-border hover:border-forge-borderLight cursor-pointer transition space-y-1 text-xs"
-                >
-                  <div className="flex items-center justify-between font-mono text-[10px]">
-                    <span
-                      className={`px-1.5 py-0.2 rounded font-bold ${
-                        alt.severity === 'CRITICAL'
-                          ? 'bg-forge-rose/20 text-forge-rose'
-                          : 'bg-forge-amber/20 text-forge-amber'
-                      }`}
-                    >
-                      {alt.severity}
-                    </span>
-                    <span className="text-forge-text-muted">{alt.id}</span>
+                <div className="flex items-center space-x-3">
+                  <div className="w-9 h-9 rounded-full bg-forge-panel border border-forge-cyan/40 flex items-center justify-center font-mono font-bold text-forge-cyan text-xs">
+                    {suspect.name
+                      .split(' ')
+                      .map((n: string) => n[0])
+                      .join('')}
                   </div>
-                  <div className="font-bold text-white text-xs">{alt.title}</div>
-                  <p className="text-[11px] text-forge-text-muted line-clamp-2 leading-relaxed">
-                    {alt.description}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* High-Risk Targets Watchlist */}
-          <div className="bg-forge-card border border-forge-border rounded-lg p-5 space-y-3">
-            <div className="flex items-center justify-between border-b border-forge-border/60 pb-2.5">
-              <div className="flex items-center space-x-2 text-forge-rose font-mono text-xs font-bold">
-                <Shield className="w-4 h-4" />
-                <span>KEY SUSPECTS WATCHLIST</span>
-              </div>
-              <span className="text-[10px] font-mono text-forge-text-muted">RISK INDEX &ge; 75</span>
-            </div>
-
-            <div className="space-y-2">
-              {highRiskEntities.slice(0, 5).map((person: Entity) => (
-                <div
-                  key={person.id}
-                  onClick={() => selectEntity(person)}
-                  className="p-2.5 bg-forge-bg rounded border border-forge-border hover:border-forge-cyan/40 cursor-pointer transition flex items-center justify-between text-xs"
-                >
                   <div>
-                    <div className="font-bold text-white flex items-center space-x-1.5">
-                      <span>{person.name}</span>
-                      <span className="text-[9px] font-mono text-forge-text-muted">[{person.id}]</span>
+                    <div className="text-xs font-bold text-white">{suspect.name}</div>
+                    <div className="text-[10px] text-forge-text-muted font-mono">
+                      ID: {suspect.id} · {suspect.role || 'Key Actor'}
                     </div>
-                    <div className="text-[10px] text-forge-cyan truncate max-w-[170px]">{person.role}</div>
                   </div>
-                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-forge-rose/20 text-forge-rose border border-forge-rose/40">
-                    {person.riskScore}
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <span
+                    className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
+                      suspect.riskScore >= 80
+                        ? 'bg-forge-rose/20 text-forge-rose border border-forge-rose/30'
+                        : 'bg-forge-amber/20 text-forge-amber border border-forge-amber/30'
+                    }`}
+                  >
+                    Risk: {suspect.riskScore}/100
+                  </span>
+                  <ArrowRight className="w-3.5 h-3.5 text-forge-text-muted" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right Col: Active Red Flag Alerts */}
+        <div className="bg-forge-panel border border-forge-border rounded-lg p-5 space-y-4 shadow-sm">
+          <div className="flex items-center justify-between border-b border-forge-border pb-3">
+            <h2 className="text-sm font-bold text-white font-mono uppercase tracking-wider flex items-center space-x-2">
+              <AlertTriangle className="w-4 h-4 text-forge-rose" />
+              <span>Proactive Risk Alerts (Red Flags)</span>
+            </h2>
+            <button
+              onClick={() => navigate('/alerts')}
+              className="text-[11px] font-mono text-forge-rose hover:underline flex items-center space-x-1"
+            >
+              <span>View All Alerts</span>
+              <ExternalLink className="w-3 h-3" />
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {topAlerts.map((alert) => (
+              <div
+                key={alert.id}
+                onClick={() => {
+                  selectAlert(alert);
+                  navigate('/alerts');
+                }}
+                className="p-3 rounded bg-forge-card hover:bg-forge-cardHover border border-forge-border cursor-pointer transition space-y-1.5"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white">{alert.title}</span>
+                  <span
+                    className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded ${
+                      alert.severity === 'CRITICAL'
+                        ? 'bg-forge-rose/20 text-forge-rose'
+                        : 'bg-forge-amber/20 text-forge-amber'
+                    }`}
+                  >
+                    {alert.severity}
                   </span>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Activity Log (Blockchain Ledger Feed) */}
-          <div className="bg-forge-card border border-forge-border rounded-lg p-5 space-y-3">
-            <div className="flex items-center justify-between border-b border-forge-border/60 pb-2.5">
-              <div className="flex items-center space-x-2 text-forge-emerald font-mono text-xs font-bold">
-                <Clock className="w-4 h-4" />
-                <span>BLOCKCHAIN ACTIVITY FEED</span>
+                <p className="text-[11px] text-forge-text-muted line-clamp-2">{alert.description}</p>
               </div>
-              <button
-                onClick={() => navigate('/audit')}
-                className="text-[10px] font-mono text-forge-cyan hover:underline"
-              >
-                LEDGER
-              </button>
-            </div>
-
-            <div className="space-y-2 text-[11px] font-mono">
-              {recentAuditBlocks.map((b) => (
-                <div key={b.id} className="p-2 bg-forge-bg rounded border border-forge-border space-y-0.5">
-                  <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-forge-emerald font-bold">BLOCK #{b.blockIndex}</span>
-                    <span className="text-forge-text-muted">{b.timestamp.slice(11, 19)}</span>
-                  </div>
-                  <div className="text-white text-xs font-sans font-medium">{b.action}</div>
-                  <div className="text-[10px] text-forge-text-muted truncate">
-                    Hash: {truncateHash(b.blockHash, 8, 8)}
-                  </div>
-                </div>
-              ))}
-            </div>
+            ))}
           </div>
+        </div>
+      </div>
+
+      {/* Bottom: Natural Language Case Questions */}
+      <div className="bg-forge-panel border border-forge-border rounded-lg p-5 space-y-3 shadow-sm">
+        <div className="flex items-center space-x-2 text-white font-mono text-xs font-bold uppercase tracking-wider border-b border-forge-border pb-2">
+          <Sparkles className="w-4 h-4 text-forge-cyan" />
+          <span>Ask Intel-Forge AI in Plain English (Junior-Friendly Queries)</span>
+        </div>
+        <p className="text-xs text-forge-text-secondary">
+          Click any investigation question below to immediately run an evidence-grounded search:
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+          {sampleQuestions.map((q, idx) => (
+            <button
+              key={idx}
+              onClick={() => handleAskQuestion(q)}
+              className="p-3 rounded bg-forge-card hover:bg-forge-cardHover border border-forge-border hover:border-forge-cyan/50 text-left transition group flex items-start justify-between"
+            >
+              <div className="flex items-start space-x-2">
+                <Search className="w-3.5 h-3.5 text-forge-cyan shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
+                <span className="text-xs text-forge-text-primary group-hover:text-white transition">
+                  {q}
+                </span>
+              </div>
+              <ArrowRight className="w-3.5 h-3.5 text-forge-text-muted group-hover:text-forge-cyan shrink-0 ml-1 mt-0.5" />
+            </button>
+          ))}
         </div>
       </div>
     </div>

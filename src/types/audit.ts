@@ -15,6 +15,7 @@ export interface AuditEvent {
     | 'EVIDENCE_VERIFIED'
     | 'EVIDENCE_FLAGGED'
     | 'EVIDENCE_REJECTED'
+    | 'EVIDENCE_INGESTED'
     | 'CASE_INITIATED'
     | 'REPORT_GENERATED'
     | 'ALERT_ACKNOWLEDGED';

@@ -144,10 +144,18 @@
 
 **Reason:** Enables rapid keyboard-driven investigation workflows expected in professional security operations software (Palantir Gotham, IBM i2).
 
-## Decision 025 — Strict Dark-Intelligence Command Centre Visual Guardrails
+## Decision 026 — Intentionally Reduced 5-Page Scope & Plain-Language Standard
 
-**Decision:** Eliminate all decorative purple gradients, cyberpunk neon, or high-glow artifacts across existing screens, standardizing on dark charcoal `#080c14`, cyan `#06b6d4`, emerald `#10b981`, amber `#f59e0b`, rose `#f43f5e`, and IBM Plex typography.
+**Decision:** Strictly reduce top-level navigation to exactly 5 pages:
+1. Dashboard (`/dashboard`)
+2. Evidence Inbox (`/evidence-inbox`)
+3. Investigation Search (`/investigation-search`)
+4. Connections (`/connections`)
+5. Reports (`/reports`)
 
-**Reason:** Enforces SIH theme integrity and law enforcement software ergonomics: information density over decoration.
+All auxiliary features (timelines, audit history, entity details, human review) live inside these 5 pages as tabs, panels, or inline actions. Eliminate all technical jargon across the UI (e.g., use "Evidence", "Investigation Search", "Review", "Suggested", "Confirmed").
+
+**Reason:** Keeps the prototype minimal, plain, and immediately usable by a non-technical investigator without cognitive overload.
+
 
 

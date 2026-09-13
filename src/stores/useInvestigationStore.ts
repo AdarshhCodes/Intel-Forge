@@ -43,6 +43,14 @@ export interface IntelligencePathData {
   chainSummary: string;
 }
 
+export interface HistoryItem {
+  id: string;
+  action: string;
+  description: string;
+  actor: string;
+  timestamp: string;
+}
+
 export interface InvestigationState {
   // Case & Identity
   currentCase: Case;
@@ -54,6 +62,10 @@ export interface InvestigationState {
     badge: string;
     agency: string;
   };
+
+  // Plain History Log
+  historyEvents: HistoryItem[];
+  addHistoryEvent: (event: { action: string; description: string; actor?: string }) => void;
 
   // Selections
   selectedEntity: Entity | null;
@@ -111,6 +123,7 @@ export interface InvestigationState {
   verifyEvidenceAction: (evidenceId: string) => Promise<void>;
   flagEvidenceAction: (evidenceId: string, reason: string) => Promise<void>;
   rejectEvidenceAction: (evidenceId: string, reason: string) => Promise<void>;
+  addEvidenceAction: (evidence: Evidence) => Promise<void>;
   investigateAlertAction: (alert: Alert) => Promise<void>;
   acknowledgeAlertAction: (alertId: string) => Promise<void>;
   resolveAlertAction: (alertId: string) => Promise<void>;
@@ -145,6 +158,47 @@ export const useInvestigationStore = create<InvestigationState>((set, get) => ({
     role: 'Senior Intelligence Investigator',
     badge: 'DL-88219',
     agency: 'Special Operations & Cyber Crime Division',
+  },
+
+  historyEvents: [
+    {
+      id: 'HIST-001',
+      action: 'Case Initialized',
+      description: 'Investigation case file opened for Operation Falcon',
+      actor: 'Insp. Vikramaditya Rathore',
+      timestamp: '2024-10-14 09:30',
+    },
+    {
+      id: 'HIST-002',
+      action: 'Evidence Added',
+      description: 'Initial FIR No. 342/24 registered and ingested',
+      actor: 'Insp. Vikramaditya Rathore',
+      timestamp: '2024-10-14 11:15',
+    },
+    {
+      id: 'HIST-003',
+      action: 'Connection Confirmed',
+      description: 'Confirmed link: Rajesh Kumar operates burner phone +91-98101-99882',
+      actor: 'Insp. Vikramaditya Rathore',
+      timestamp: '2024-10-15 14:20',
+    },
+  ],
+
+  addHistoryEvent: (event) => {
+    const newEvent: HistoryItem = {
+      id: `HIST-${Date.now().toString().slice(-4)}`,
+      action: event.action,
+      description: event.description,
+      actor: event.actor || get().currentInvestigator.name,
+      timestamp: new Date().toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    };
+    set({ historyEvents: [newEvent, ...get().historyEvents] });
   },
 
   selectedEntity: null,
@@ -311,6 +365,11 @@ export const useInvestigationStore = create<InvestigationState>((set, get) => ({
       payload: { confidence: updatedRel.confidence, verifiedBy: investigator.name },
     });
 
+    get().addHistoryEvent({
+      action: 'Connection Confirmed',
+      description: `Confirmed connection: ${updatedRel.label || updatedRel.type}`,
+    });
+
     set({
       selectedRelationship: updatedRel,
       graphVersion: get().graphVersion + 1,
@@ -336,6 +395,11 @@ export const useInvestigationStore = create<InvestigationState>((set, get) => ({
       targetId: relationshipId,
       details: `Relationship [${relationshipId}: ${updatedRel.type}] rejected by human review. Reason: ${reason}`,
       payload: { reason, rejectedBy: investigator.name },
+    });
+
+    get().addHistoryEvent({
+      action: 'Connection Removed',
+      description: `Removed connection: ${updatedRel.label || updatedRel.type}`,
     });
 
     set({
@@ -466,6 +530,11 @@ export const useInvestigationStore = create<InvestigationState>((set, get) => ({
       payload: { hash: updated.hash, confidence: updated.confidence, verifiedBy: investigator.name },
     });
 
+    get().addHistoryEvent({
+      action: 'Evidence Reviewed',
+      description: `Reviewed and confirmed evidence: ${updated.title}`,
+    });
+
     set({
       selectedEvidence: updated,
       viewingEvidence: get().viewingEvidence?.id === evidenceId ? updated : get().viewingEvidence,
@@ -512,9 +581,44 @@ export const useInvestigationStore = create<InvestigationState>((set, get) => ({
       payload: { reason, rejectedBy: investigator.name },
     });
 
+    get().addHistoryEvent({
+      action: 'Evidence Rejected',
+      description: `Rejected evidence: ${updated.title} (${reason})`,
+    });
+
     set({
       selectedEvidence: updated,
       viewingEvidence: get().viewingEvidence?.id === evidenceId ? updated : get().viewingEvidence,
+      graphVersion: get().graphVersion + 1,
+    });
+  },
+
+  addEvidenceAction: async (evidence) => {
+    const investigator = get().currentInvestigator;
+    evidenceService.addEvidence(evidence);
+
+    await auditService.mintBlock({
+      actorId: investigator.id,
+      actorName: investigator.name,
+      actorRole: investigator.role,
+      action: 'EVIDENCE_INGESTED',
+      targetType: 'EVIDENCE',
+      targetId: evidence.id,
+      details: `New evidence exhibit added via Intake Inbox: ${evidence.title}`,
+      payload: { type: evidence.type, source: evidence.source, confidence: evidence.confidence },
+    });
+
+    get().addHistoryEvent({
+      action: 'Evidence Added',
+      description: `Added new evidence: ${evidence.title} (${evidence.type})`,
+    });
+
+    const currentCase = get().currentCase;
+    set({
+      currentCase: {
+        ...currentCase,
+        evidenceCount: currentCase.evidenceCount + 1,
+      },
       graphVersion: get().graphVersion + 1,
     });
   },
